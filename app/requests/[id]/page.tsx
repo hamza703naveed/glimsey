@@ -8,7 +8,7 @@ import { closeRequest, submitBid } from "../actions";
 export default async function RequestPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string>> }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const { db, user } = await currentUser();
+  const { db, user, role } = await currentUser();
   if (!user) redirect(`/login?next=/requests/${id}`);
   const { data: r } = await db.from("requests").select("*").eq("id", id).maybeSingle();
   if (!r) notFound();
@@ -31,8 +31,8 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
           {(r.budget_min != null || r.budget_max != null) && ` · الميزانية ${r.budget_min ?? "؟"} - ${r.budget_max ?? "؟"} ريال`}
         </p>
         <p className="whitespace-pre-line">{r.description}</p>
-        <p className="text-sm">{open ? `مفتوح حتى ${r.expires_at.slice(0, 10)}` : "مغلق"}</p>
-        {isOwner && open && (
+        <p className="text-sm">{open ? `مفتوح حتى ${new Date(r.expires_at).toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" })}` : "مغلق"}</p>
+        {(isOwner || role === "admin") && open && (
           <form action={closeRequest}><input type="hidden" name="request_id" value={id} /><button className="text-sm text-stone-600 underline">إغلاق الطلب</button></form>
         )}
       </div>

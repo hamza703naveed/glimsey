@@ -3,6 +3,7 @@ import Link from "next/link";
 import { currentUser } from "@/lib/supabase";
 import { CITIES, PRICE_TIERS } from "@/lib/constants";
 import { saveVendor } from "./actions";
+import PhotoUploader from "./PhotoUploader";
 
 const STATUS: Record<string, string> = { pending: "بانتظار المراجعة", approved: "منشور", rejected: "مرفوض، تواصل معنا" };
 
@@ -48,9 +49,8 @@ export default async function VendorProfilePage({ searchParams }: { searchParams
           ))}
         </div>
       )}
-      <label>إضافة صور لأعمالك (حتى 10 صور)<input className="input" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple /></label>
       {v?.status === "approved" && <p className="text-sm text-stone-600">تغيير الاسم أو الفئة أو الصور يعيد الملف للمراجعة قبل نشره مجدداً.</p>}
-      <button className="btn">حفظ</button>
+      <PhotoUploader userId={user.id} room={10 - (v?.photos?.length ?? 0)} />
     </form>
   );
 }

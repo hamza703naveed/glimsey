@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signIn, signUp } from "./actions";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
@@ -12,6 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <label>البريد الإلكتروني<input className="input" name="email" type="email" required /></label>
         <label>كلمة المرور<input className="input" name="password" type="password" required /></label>
         <button className="btn">دخول</button>
+        <Link href="/login/forgot" className="text-sm text-rose-700 underline">نسيت كلمة المرور؟</Link>
       </form>
       <form action={signUp} className="card grid gap-3">
         <h2 className="text-lg font-bold">حساب جديد</h2>

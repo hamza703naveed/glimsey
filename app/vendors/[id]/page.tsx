@@ -3,7 +3,7 @@ import Link from "next/link";
 import { currentUser } from "@/lib/supabase";
 import { PRICE_TIERS } from "@/lib/constants";
 import { waLink } from "@/lib/whatsapp";
-import { addReview } from "./actions";
+import { addReview, deleteReview } from "./actions";
 
 export default async function VendorPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string>> }) {
   const { id } = await params;
@@ -40,6 +40,13 @@ export default async function VendorPage({ params, searchParams }: { params: Pro
           <div key={r.id} className="card">
             <div>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
             {r.body && <p className="mt-1 whitespace-pre-line">{r.body}</p>}
+            {role === "admin" && (
+              <form action={deleteReview}>
+                <input type="hidden" name="id" value={r.id} />
+                <input type="hidden" name="vendor_id" value={v.id} />
+                <button className="text-sm text-red-700 underline">حذف التقييم</button>
+              </form>
+            )}
           </div>
         ))}
         {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}

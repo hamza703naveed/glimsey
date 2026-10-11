@@ -23,7 +23,7 @@ export default async function RequestsPage() {
     <div className="grid gap-8">
       {role === "vendor" && (
         <section className="grid gap-3">
-          <h1 className="text-xl font-bold">طلبات مفتوحة في فئتك</h1>
+          <h1 className="text-xl font-bold">طلبات في فئتك</h1>
           {open.length ? list(open, true) : <p className="text-stone-600">لا توجد طلبات حالياً. تظهر الطلبات هنا بعد اعتماد ملفك التجاري.</p>}
         </section>
       )}

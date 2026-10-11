@@ -58,6 +58,29 @@ set test.uid='00000000-0000-0000-0000-00000000000c';
 insert into reviews (vendor_id, customer_id, rating) select id, auth.uid(), 5 from vendors where business_name='Studio B';
 select expect('rating summary', review_count, 1) from vendor_cards where business_name='Studio B';
 do $$ begin insert into reviews (vendor_id, customer_id, rating) select id, auth.uid(), 1 from vendors where business_name='Studio B'; raise exception 'FAIL double review'; exception when unique_violation then null; end $$;
+-- request owner can close via the function but not edit fields directly
+update requests set expires_at = now() + interval '1 year';
+select expect('customer cannot edit request fields', count(*), 0) from requests where expires_at > now() + interval '30 days';
+select close_request(id) from requests;
+select expect('customer closed request', count(*), 1) from requests where status = 'closed';
+-- vendor still sees the closed request they bid on
+set test.uid='00000000-0000-0000-0000-00000000000b';
+select expect('vendor sees closed request they bid on', count(*), 1) from requests;
+-- at most 5 open requests per customer
+set test.uid='00000000-0000-0000-0000-00000000000c';
+insert into requests (customer_id,category_ids,event_type,city,description) select auth.uid(),'{7}','x','x','spam spam spam' from generate_series(1,5);
+do $$ begin insert into requests (customer_id,category_ids,event_type,city,description) values (auth.uid(),'{7}','x','x','spam spam spam'); raise exception 'FAIL sixth open request'; exception when insufficient_privilege then null; end $$;
+-- a rejected vendor that edits goes back to pending
+set test.uid='00000000-0000-0000-0000-00000000000a';
+update vendors set status='rejected' where business_name='Cater D';
+set test.uid='00000000-0000-0000-0000-00000000000d';
+update vendors set description='fixed it';
+select expect('rejected listing re-queued on edit', count(*), 1) from vendors where owner_id = auth.uid() and status='pending';
+-- the dashboard (not the website role) can change status
+reset role;
+update vendors set status='approved' where business_name='Cater D';
+select expect('dashboard can approve', count(*), 2) from vendors where status='approved';
+set role authenticated;
 -- anonymous: no requests, approved vendors only
 set test.uid='';
 select expect('anon sees no requests', count(*), 0) from requests;

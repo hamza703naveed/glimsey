@@ -4,6 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/supabase";
 
+export async function deleteReview(form: FormData) {
+  const { db } = await currentUser();
+  await db.from("reviews").delete().eq("id", String(form.get("id"))); // RLS: admins only
+  revalidatePath(`/vendors/${form.get("vendor_id")}`);
+}
+
 export async function addReview(form: FormData) {
   const { db, user } = await currentUser();
   const vendorId = String(form.get("vendor_id"));

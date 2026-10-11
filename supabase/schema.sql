@@ -126,15 +126,21 @@ create policy "vendors create own listing" on public.vendors for insert
 -- Status and badge are admin-only, and key edits need re-approval; the trigger below enforces both.
 create policy "vendors edit own listing" on public.vendors for update using (owner_id = auth.uid() or public.is_admin());
 
+-- Runs as the caller (no security definer): website users are the 'authenticated' role,
+-- while the Supabase dashboard and service key run as other roles and are trusted.
 create function public.guard_vendor_admin_fields() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql set search_path = public as $$
 begin
-  if not public.is_admin() and (new.status <> old.status or new.verified <> old.verified) then
+  if current_user <> 'authenticated' or public.is_admin() then
+    return new;
+  end if;
+  if new.status <> old.status or new.verified <> old.verified then
     raise exception 'only admins can change status or verified';
   end if;
-  -- Edits that change what customers see send an approved listing back for review.
-  if not public.is_admin() and old.status = 'approved' and (new.category_id, new.business_name, new.photos)
-     is distinct from (old.category_id, old.business_name, old.photos) then
+  -- A rejected listing that its owner fixes goes back in the queue;
+  -- edits that change what customers see send an approved listing back for review.
+  if old.status = 'rejected' or (old.status = 'approved' and (new.category_id, new.business_name, new.photos)
+     is distinct from (old.category_id, old.business_name, old.photos)) then
     new.status := 'pending';
   end if;
   return new;
@@ -147,14 +153,33 @@ language sql stable security definer set search_path = public as $$
   select id from vendors where owner_id = auth.uid() and status = 'approved'
 $$;
 
+-- Lets a vendor keep seeing a request they bid on after it closes. A function, because a bids
+-- subquery inside this policy would loop through the bids policy back into requests.
+create function public.i_bid_on(req uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from bids where request_id = req and vendor_id = public.my_vendor_id())
+$$;
+
 create policy "requests visible to owner and matching vendors" on public.requests for select
   using (
-    customer_id = auth.uid() or public.is_admin()
+    customer_id = auth.uid() or public.is_admin() or public.i_bid_on(id)
     or (status = 'open' and expires_at > now() and exists (
       select 1 from vendors v where v.owner_id = auth.uid() and v.status = 'approved' and v.category_id = any (category_ids)))
   );
-create policy "customers post requests" on public.requests for insert with check (customer_id = auth.uid());
-create policy "customers close own requests" on public.requests for update using (customer_id = auth.uid() or public.is_admin());
+-- shortcut: the cap of 5 open requests per customer can be passed by simultaneous posts; fine against casual spam.
+create function public.my_open_request_count() returns bigint
+language sql stable security definer set search_path = public as $$
+  select count(*) from requests where customer_id = auth.uid() and status = 'open' and expires_at > now()
+$$;
+create policy "customers post requests" on public.requests for insert
+  with check (customer_id = auth.uid() and public.my_open_request_count() < 5);
+create policy "admins edit requests" on public.requests for update using (public.is_admin());
+
+-- Customers may only close their own request, so this is a function rather than an update policy.
+create function public.close_request(req uuid) returns void
+language sql security definer set search_path = public as $$
+  update requests set status = 'closed' where id = req and (customer_id = auth.uid() or public.is_admin())
+$$;
 
 create policy "bid visible to its vendor and the request owner" on public.bids for select
   using (

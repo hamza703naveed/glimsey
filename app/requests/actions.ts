@@ -32,6 +32,8 @@ export async function postRequest(form: FormData) {
     budget_max: budgetMax,
     description: String(form.get("description")).trim(),
   }).select("id").single();
+  // 42501 = the database's "at most 5 open requests" rule
+  if (error?.code === "42501") fail("لديك 5 طلبات مفتوحة. أغلق طلباً قديماً قبل نشر طلب جديد");
   if (error) fail("تعذر نشر الطلب، تأكد من البيانات");
   redirect(`/requests/${data!.id}`);
 }
@@ -48,9 +50,11 @@ export async function submitBid(form: FormData) {
   revalidatePath(`/requests/${requestId}`);
 }
 
+// The database function only closes the caller's own request (or any request, for admins).
 export async function closeRequest(form: FormData) {
   const { db } = await currentUser();
   const requestId = String(form.get("request_id"));
-  await db.from("requests").update({ status: "closed" }).eq("id", requestId);
+  await db.rpc("close_request", { req: requestId });
   revalidatePath(`/requests/${requestId}`);
+  revalidatePath("/admin");
 }

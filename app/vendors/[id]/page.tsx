@@ -8,7 +8,7 @@ import { addReview } from "./actions";
 export default async function VendorPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string>> }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const { db, user } = await currentUser();
+  const { db, user, role } = await currentUser();
   const { data: v } = await db.from("vendor_cards").select("*").eq("id", id).maybeSingle();
   if (!v) notFound();
   const { data: category } = await db.from("categories").select("name_ar").eq("id", v.category_id).single();
@@ -43,7 +43,7 @@ export default async function VendorPage({ params, searchParams }: { params: Pro
           </div>
         ))}
         {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
-        {user ? (
+        {role === "customer" ? (
           <form action={addReview} className="card grid gap-2">
             <input type="hidden" name="vendor_id" value={v.id} />
             <label>تقييمك
@@ -54,7 +54,7 @@ export default async function VendorPage({ params, searchParams }: { params: Pro
             <label>تعليقك (اختياري)<textarea name="body" className="input" maxLength={1500} rows={3} /></label>
             <button className="btn w-fit">إرسال التقييم</button>
           </form>
-        ) : (
+        ) : !user && (
           <p><Link href={`/login?next=/vendors/${v.id}`} className="text-rose-700 underline">سجّل الدخول</Link> لكتابة تقييم.</p>
         )}
       </section>

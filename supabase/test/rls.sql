@@ -24,6 +24,15 @@ select expect('pending vendors hidden from customers', count(*), 0) from vendors
 -- admin approves both
 set test.uid='00000000-0000-0000-0000-00000000000a';
 update vendors set status='approved', verified=true;
+-- an approved vendor changing category goes back to review; editing the description does not
+set test.uid='00000000-0000-0000-0000-00000000000d';
+update vendors set description='new menu';
+select expect('description edit keeps approval', count(*), 1) from vendors where owner_id = auth.uid() and status='approved';
+update vendors set category_id=7;
+select expect('category change needs re-approval', count(*), 1) from vendors where owner_id = auth.uid() and status='pending';
+update vendors set category_id=4;
+set test.uid='00000000-0000-0000-0000-00000000000a';
+update vendors set status='approved';
 -- customer posts a photography request
 set test.uid='00000000-0000-0000-0000-00000000000c';
 insert into requests (customer_id,category_ids,event_type,city,description) values (auth.uid(),'{7}','زفاف','الرياض','need a photographer please');
@@ -37,6 +46,7 @@ set test.uid='00000000-0000-0000-0000-00000000000b';
 select expect('matching vendor sees request', count(*), 1) from requests;
 insert into bids (request_id,vendor_id,price,message) select id, public.my_vendor_id(), 3000, 'Happy to help' from requests;
 do $$ begin insert into bids (request_id,vendor_id,price,message) select id, public.my_vendor_id(), 1, 'again' from requests; raise exception 'FAIL double bid'; exception when unique_violation then null; end $$;
+do $$ begin insert into reviews (vendor_id, customer_id, rating) select id, auth.uid(), 1 from vendors where business_name='Cater D'; raise exception 'FAIL vendor reviewed a competitor'; exception when insufficient_privilege then null; end $$;
 -- customer sees bid, marks seen; vendor B sees seen_at
 set test.uid='00000000-0000-0000-0000-00000000000c';
 select expect('owner sees bids', count(*), 1) from bids;

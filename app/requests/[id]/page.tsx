@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { currentUser } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
+import { isOpen } from "@/lib/constants";
 import { closeRequest, submitBid } from "../actions";
 
 export default async function RequestPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string>> }) {
@@ -12,6 +13,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
   const { data: r } = await db.from("requests").select("*").eq("id", id).maybeSingle();
   if (!r) notFound();
   const isOwner = r.customer_id === user.id;
+  const open = isOpen(r);
   if (isOwner) await db.rpc("mark_bids_seen", { req: id });
 
   // RLS: the owner sees every bid, a vendor sees only their own.
@@ -26,11 +28,11 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
           {categories?.map((c) => c.name_ar).join("، ")}
           {r.event_date && ` · ${r.event_date}`}
           {r.guest_count && ` · ${r.guest_count} ضيف`}
-          {(r.budget_min || r.budget_max) && ` · الميزانية ${r.budget_min ?? "؟"} - ${r.budget_max ?? "؟"} ريال`}
+          {(r.budget_min != null || r.budget_max != null) && ` · الميزانية ${r.budget_min ?? "؟"} - ${r.budget_max ?? "؟"} ريال`}
         </p>
         <p className="whitespace-pre-line">{r.description}</p>
-        <p className="text-sm">{r.status === "open" ? `مفتوح حتى ${r.expires_at.slice(0, 10)}` : "مغلق"}</p>
-        {isOwner && r.status === "open" && (
+        <p className="text-sm">{open ? `مفتوح حتى ${r.expires_at.slice(0, 10)}` : "مغلق"}</p>
+        {isOwner && open && (
           <form action={closeRequest}><input type="hidden" name="request_id" value={id} /><button className="text-sm text-stone-600 underline">إغلاق الطلب</button></form>
         )}
       </div>
@@ -38,7 +40,8 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
 
       <section className="grid gap-3">
         <h2 className="text-lg font-bold">{isOwner ? `العروض (${bids?.length ?? 0})` : "عرضك"}</h2>
-        {bids?.map((b) => {
+        {/* A bid whose vendor is no longer approved comes back without its vendor; hide it. */}
+        {bids?.filter((b) => b.vendors).map((b) => {
           const v = b.vendors as unknown as { id: string; business_name: string; whatsapp: string; verified: boolean };
           return (
             <div key={b.id} className="card grid gap-2">
@@ -56,7 +59,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
           );
         })}
         {isOwner && !bids?.length && <p className="text-stone-600">لم تصلك عروض بعد. سنُعلم المزودين في الفئات المطلوبة.</p>}
-        {!isOwner && !bids?.length && r.status === "open" && (
+        {!isOwner && !bids?.length && open && (
           <form action={submitBid} className="card grid gap-2">
             <input type="hidden" name="request_id" value={id} />
             <label>السعر المقترح (ريال)<input className="input" type="number" name="price" min={0} required /></label>

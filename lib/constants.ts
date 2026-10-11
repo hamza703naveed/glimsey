@@ -2,4 +2,7 @@ export const CITIES = ["الرياض", "جدة", "الدمام / الخبر", "�
 
 export const EVENT_TYPES = ["زفاف", "خطوبة", "عيد ميلاد", "استقبال مولود", "تخرج", "جلسة تصوير", "فعالية شركات", "أخرى"];
 
+// A request stops taking bids when closed or past expires_at (the database enforces the same rule).
+export const isOpen = (r: { status: string; expires_at: string }) => r.status === "open" && new Date(r.expires_at) > new Date();
+
 export const PRICE_TIERS: Record<string, string> = { budget: "اقتصادي", mid: "متوسط", premium: "مميز", luxury: "فاخر" };

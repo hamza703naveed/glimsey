@@ -2,8 +2,12 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { CITIES, PRICE_TIERS } from "@/lib/constants";
 
+const PAGE_SIZE = 60;
+
 export default async function VendorsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const { category, city, tier, q } = await searchParams;
+  const params = await searchParams;
+  const { category, city, tier, q } = params;
+  const page = Math.max(0, Number(params.page) || 0);
   const db = await supabase();
   const { data: categories } = await db.from("categories").select("id, name_ar").order("id");
 
@@ -17,7 +21,10 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
     .order("verified", { ascending: false })
     .order("rating", { ascending: false })
     .order("review_count", { ascending: false })
-    .limit(60);
+    .order("id") // stable order so pages don't overlap
+    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE); // one extra row tells us a next page exists
+  const hasMore = (vendors?.length ?? 0) > PAGE_SIZE;
+  const pageLink = (n: number) => `/vendors?${new URLSearchParams({ ...params, page: String(n) })}`;
 
   return (
     <div className="grid gap-6">
@@ -39,7 +46,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
       </form>
       {!vendors?.length && <p className="card text-center text-stone-600">لا يوجد مزودون مطابقون بعد. جرّب توسيع البحث أو <Link href="/requests/new" className="text-rose-700 underline">انشر طلبك</Link> ليصلك المزودون.</p>}
       <div className="grid gap-4 md:grid-cols-3">
-        {vendors?.map((v) => (
+        {vendors?.slice(0, PAGE_SIZE).map((v) => (
           <Link key={v.id} href={`/vendors/${v.id}`} className="card grid gap-2 hover:border-rose-300">
             {v.photos[0] && <img src={v.photos[0]} alt="" className="aspect-video w-full rounded-lg object-cover" />}
             <div className="flex items-center gap-2 font-bold">
@@ -51,6 +58,10 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
           </Link>
         ))}
       </div>
+      <nav className="flex justify-between">
+        {page > 0 ? <Link href={pageLink(page - 1)} className="text-rose-700 underline">السابق</Link> : <span />}
+        {hasMore && <Link href={pageLink(page + 1)} className="text-rose-700 underline">المزيد</Link>}
+      </nav>
     </div>
   );
 }

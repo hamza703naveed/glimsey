@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 // One server-side client per request; RLS in supabase/schema.sql decides what each user may read or write.
 export async function supabase() {
@@ -18,10 +19,11 @@ export async function supabase() {
   });
 }
 
-export async function currentUser() {
+// Cached per request: the layout and the page both need the user.
+export const currentUser = cache(async () => {
   const db = await supabase();
   const { data } = await db.auth.getUser();
   if (!data.user) return { db, user: null, role: null as string | null };
   const { data: profile } = await db.from("profiles").select("role").eq("id", data.user.id).single();
   return { db, user: data.user, role: (profile?.role ?? "customer") as string };
-}
+});

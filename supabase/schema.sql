@@ -123,7 +123,7 @@ create policy "approved vendors are public" on public.vendors for select
 create policy "vendors create own listing" on public.vendors for insert
   with check (owner_id = auth.uid() and status = 'pending' and verified = false
     and exists (select 1 from profiles where id = auth.uid() and role = 'vendor'));
--- Status and badge are admin-only; the trigger below enforces that on update.
+-- Status and badge are admin-only, and key edits need re-approval; the trigger below enforces both.
 create policy "vendors edit own listing" on public.vendors for update using (owner_id = auth.uid() or public.is_admin());
 
 create function public.guard_vendor_admin_fields() returns trigger
@@ -131,6 +131,11 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not public.is_admin() and (new.status <> old.status or new.verified <> old.verified) then
     raise exception 'only admins can change status or verified';
+  end if;
+  -- Edits that change what customers see send an approved listing back for review.
+  if not public.is_admin() and old.status = 'approved' and (new.category_id, new.business_name, new.photos)
+     is distinct from (old.category_id, old.business_name, old.photos) then
+    new.status := 'pending';
   end if;
   return new;
 end $$;
@@ -173,11 +178,12 @@ $$;
 create policy "reviews are public" on public.reviews for select using (true);
 -- shortcut: any signed-in customer can review once per vendor; tie reviews to a logged contact once contacts are tracked.
 create policy "customers review once" on public.reviews for insert
-  with check (customer_id = auth.uid() and not exists (select 1 from vendors v where v.id = vendor_id and v.owner_id = auth.uid()));
+  with check (customer_id = auth.uid() and exists (select 1 from profiles where id = auth.uid() and role = 'customer'));
 create policy "admins remove reviews" on public.reviews for delete using (public.is_admin());
 
 -- Public bucket for vendor portfolio photos; each vendor writes only under a folder named after their user id.
-insert into storage.buckets (id, name, public) values ('vendor-photos', 'vendor-photos', true);
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('vendor-photos', 'vendor-photos', true, 5242880, '{image/jpeg,image/png,image/webp}');
 create policy "vendors upload own photos" on storage.objects for insert to authenticated
   with check (bucket_id = 'vendor-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "vendors delete own photos" on storage.objects for delete to authenticated

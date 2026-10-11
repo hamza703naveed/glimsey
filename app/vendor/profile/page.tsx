@@ -48,7 +48,8 @@ export default async function VendorProfilePage({ searchParams }: { searchParams
           ))}
         </div>
       )}
-      <label>إضافة صور لأعمالك (حتى 10 صور)<input className="input" name="photos" type="file" accept="image/*" multiple /></label>
+      <label>إضافة صور لأعمالك (حتى 10 صور)<input className="input" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple /></label>
+      {v?.status === "approved" && <p className="text-sm text-stone-600">تغيير الاسم أو الفئة أو الصور يعيد الملف للمراجعة قبل نشره مجدداً.</p>}
       <button className="btn">حفظ</button>
     </form>
   );

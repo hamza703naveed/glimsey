@@ -6,6 +6,7 @@ import { CITIES, PRICE_TIERS } from "@/lib/constants";
 import { normaliseSaudiMobile } from "@/lib/whatsapp";
 
 const MAX_PHOTOS = 10;
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"]; // same list as the storage bucket in schema.sql
 const fail = (msg: string): never => redirect(`/vendor/profile?error=${encodeURIComponent(msg)}`);
 
 export async function saveVendor(form: FormData) {
@@ -25,7 +26,7 @@ export async function saveVendor(form: FormData) {
   const files = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
   if (photos.length + files.length > MAX_PHOTOS) fail(`الحد الأقصى ${MAX_PHOTOS} صور`);
   for (const file of files) {
-    if (!file.type.startsWith("image/") || file.size > 5_000_000) fail("كل صورة يجب أن تكون أقل من 5 ميغابايت");
+    if (!PHOTO_TYPES.includes(file.type) || file.size > 5_242_880) fail("الصور المقبولة: JPG أو PNG أو WebP، وأقل من 5 ميغابايت لكل صورة");
     const path = `${user.id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.-]/g, "")}`;
     const { error } = await db.storage.from("vendor-photos").upload(path, file, { contentType: file.type });
     if (error) fail("تعذر رفع الصور، حاول مرة أخرى");

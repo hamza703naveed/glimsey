@@ -4,12 +4,12 @@ An Arabic-first directory of event vendors in Saudi Arabia, with Upwork-style re
 Customers browse vendors or post a request, vendors send quotes, and both sides talk on WhatsApp.
 There are no payments, commissions or escrow in this version.
 
-Stack: Next.js 15 (App Router, server actions), Supabase (Postgres, auth, photo storage), Tailwind. Hosting: Vercel.
+Stack: Next.js 16 (App Router, server actions), Supabase (Postgres, auth, photo storage), Tailwind. Hosting: Vercel.
 
 ## What's in this version
 
 - Directory with filters (category, city, price tier, name) and vendor profiles with photos, reviews and a WhatsApp button
-- Sign-up as a customer or a vendor (email and password)
+- Sign-up as a customer or a vendor (email and password), with password reset by email
 - Vendor listing editor with photo upload; new listings wait for admin approval
 - Requests: customers describe their event (several categories at once) and get bids
 - Bids: approved vendors see open requests in their category, send one bid each, and see when the customer has seen it
@@ -24,6 +24,7 @@ Stack: Next.js 15 (App Router, server actions), Supabase (Postgres, auth, photo 
 2. Open **SQL Editor**, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and run it once.
 3. Under **Project Settings > API**, copy the project URL and the `anon` public key.
 4. For quick local testing you can turn off **Authentication > Providers > Email > Confirm email**. Turn it back on before launch.
+5. Under **Authentication > URL Configuration > Redirect URLs**, add `http://localhost:3000/auth/callback` so email links work locally.
 
 ### 2. Run it locally
 
@@ -47,7 +48,7 @@ The **الإدارة** (Admin) link then appears in the menu.
 
 1. Import the GitHub repo at [vercel.com/new](https://vercel.com/new).
 2. Add the same two environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-3. Deploy. In Supabase, set **Authentication > URL Configuration > Site URL** to your Vercel or custom domain so confirmation emails link back correctly.
+3. Deploy. In Supabase, under **Authentication > URL Configuration**, set **Site URL** to your Vercel or custom domain and add `https://YOUR-DOMAIN/auth/callback` to **Redirect URLs**, so confirmation and password-reset emails sign people in.
 
 ## Checks
 

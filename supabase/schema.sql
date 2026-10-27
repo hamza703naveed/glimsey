@@ -1,4 +1,4 @@
--- Haflaat database schema. Run once in the Supabase SQL editor (or `supabase db push`).
+-- Glimsey database schema. Run once in the Supabase SQL editor (or `supabase db push`).
 -- Row Level Security is the security boundary: the browser talks to the database directly.
 
 create table public.profiles (

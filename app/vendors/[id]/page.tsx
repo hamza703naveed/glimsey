@@ -23,7 +23,7 @@ export default async function VendorPage({ params, searchParams }: { params: Pro
           {v.verified && <span className="rounded bg-emerald-100 px-2 text-sm text-emerald-800">موثّق</span>}
         </h1>
         <p className="text-stone-600">{category?.name_ar} · {v.city} · {PRICE_TIERS[v.price_tier]} · {v.review_count ? `★ ${v.rating} (${v.review_count})` : "لا توجد تقييمات بعد"}</p>
-        <a className="btn w-fit bg-emerald-600 hover:bg-emerald-700" href={waLink(v.whatsapp, `مرحباً ${v.business_name}، وجدتكم عبر منصة حفلات`)} target="_blank" rel="noopener noreferrer">
+        <a className="btn w-fit bg-emerald-600 hover:bg-emerald-700" href={waLink(v.whatsapp, `مرحباً ${v.business_name}، وجدتكم عبر منصة Glimsey`)} target="_blank" rel="noopener noreferrer">
           تواصل عبر واتساب
         </a>
       </div>

@@ -5,7 +5,7 @@ import { signOut } from "./login/actions";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "حفلات | Haflaat",
+  title: "Glimsey",
   description: "دليل مزودي خدمات الحفلات والمناسبات في السعودية",
 };
 
@@ -16,7 +16,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-stone-50 text-stone-900">
         <header className="border-b border-stone-200 bg-white">
           <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-3">
-            <Link href="/" className="text-xl font-bold text-rose-700">حفلات</Link>
+            <Link href="/" className="text-xl font-bold text-rose-700">Glimsey</Link>
             <Link href="/vendors">المزودون</Link>
             <Link href="/requests/new">اطلب عروض أسعار</Link>
             {user && <Link href="/requests">طلباتي</Link>}

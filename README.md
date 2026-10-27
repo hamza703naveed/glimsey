@@ -1,4 +1,4 @@
-# Haflaat (حفلات)
+# Glimsey
 
 An Arabic-first directory of event vendors in Saudi Arabia, with Upwork-style requests and bids.
 Customers browse vendors or post a request, vendors send quotes, and both sides talk on WhatsApp.
@@ -61,8 +61,8 @@ npm run build
 The database's access rules live in `supabase/schema.sql` (Row Level Security). They are the real security boundary, so after changing them run the RLS checks against a throwaway Postgres 16:
 
 ```bash
-createdb haflaat_test
-psql -d haflaat_test -v ON_ERROR_STOP=1 -f supabase/test/supabase_stub.sql -f supabase/schema.sql -f supabase/test/rls.sql
+createdb glimsey_test
+psql -d glimsey_test -v ON_ERROR_STOP=1 -f supabase/test/supabase_stub.sql -f supabase/schema.sql -f supabase/test/rls.sql
 ```
 
 It prints `RLS checks passed` or stops at the first failing rule.

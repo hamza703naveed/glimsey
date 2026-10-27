@@ -51,7 +51,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
               </div>
               <p className="whitespace-pre-line">{b.message}</p>
               {isOwner ? (
-                <a className="btn w-fit bg-emerald-600 hover:bg-emerald-700" href={waLink(v.whatsapp, `مرحباً، بخصوص عرضكم على طلبي في منصة حفلات (${r.event_type})`)} target="_blank" rel="noopener noreferrer">تواصل عبر واتساب</a>
+                <a className="btn w-fit bg-emerald-600 hover:bg-emerald-700" href={waLink(v.whatsapp, `مرحباً، بخصوص عرضكم على طلبي في منصة Glimsey (${r.event_type})`)} target="_blank" rel="noopener noreferrer">تواصل عبر واتساب</a>
               ) : (
                 <span className="text-sm text-stone-600">{b.seen_at ? "شاهد العميل عرضك" : "لم يُشاهَد بعد"}</span>
               )}

@@ -9,3 +9,5 @@ export const PRICE_TIERS: Record<string, string> = { budget: "اقتصادي", m
 
 // Only same-site paths are allowed as a post-login destination ("//x" and "/\x" are other sites to a browser).
 export const safePath = (next: string | null | undefined) => (next && /^\/(?![/\\])/.test(next) ? next : "/");
+
+export const BOOKING_STATUS: Record<string, string> = { requested: "بانتظار تأكيد المزود", confirmed: "مؤكد", completed: "تم", cancelled: "ملغي" };

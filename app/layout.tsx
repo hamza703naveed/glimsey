@@ -20,6 +20,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/vendors">المزودون</Link>
             <Link href="/requests/new">اطلب عروض أسعار</Link>
             {user && <Link href="/requests">طلباتي</Link>}
+            {user && <Link href="/bookings">الحجوزات</Link>}
             {role === "vendor" && <Link href="/vendor/profile">ملفي التجاري</Link>}
             {role === "admin" && <Link href="/admin">الإدارة</Link>}
             <span className="flex-1" />

@@ -6,7 +6,7 @@ const PAGE_SIZE = 60;
 
 export default async function VendorsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const params = await searchParams;
-  const { category, city, tier, q } = params;
+  const { category, city, tier, q, date } = params;
   const page = Math.max(0, Number(params.page) || 0);
   const db = await supabase();
   const { data: categories } = await db.from("categories").select("id, name_ar").order("id");
@@ -15,6 +15,11 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
   if (category) query = query.eq("category_id", Number(category));
   if (city) query = query.eq("city", city);
   if (tier) query = query.eq("price_tier", tier);
+  if (date) {
+    // Hide suppliers already booked (confirmed) on that date.
+    const { data: busy } = await db.rpc("busy_vendor_ids", { d: date });
+    if (busy?.length) query = query.not("id", "in", `(${busy.join(",")})`);
+  }
   if (q) query = query.ilike("business_name", `%${q.replace(/[%_]/g, "")}%`);
   // shortcut: simple "best match" order (verified, then rating, then review count); move to a weighted score once there are reviews to tune it on.
   const { data: vendors } = await query
@@ -42,6 +47,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
           <option value="">كل الأسعار</option>
           {Object.entries(PRICE_TIERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
+        <input type="date" name="date" defaultValue={date} className="input w-auto" aria-label="تاريخ المناسبة" />
         <button className="btn">تطبيق</button>
       </form>
       {!vendors?.length && <p className="card text-center text-stone-600">لا يوجد مزودون مطابقون بعد. جرّب توسيع البحث أو <Link href="/requests/new" className="text-rose-700 underline">انشر طلبك</Link> ليصلك المزودون.</p>}

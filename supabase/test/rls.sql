@@ -53,11 +53,10 @@ select expect('owner sees bids', count(*), 1) from bids;
 select mark_bids_seen(id) from requests;
 set test.uid='00000000-0000-0000-0000-00000000000b';
 select expect('seen stamped', count(*), 1) from bids where seen_at is not null;
--- vendor cannot review self; customer reviews once
+-- no review without a completed booking; no booking without an event date
 set test.uid='00000000-0000-0000-0000-00000000000c';
-insert into reviews (vendor_id, customer_id, rating) select id, auth.uid(), 5 from vendors where business_name='Studio B';
-select expect('rating summary', review_count, 1) from vendor_cards where business_name='Studio B';
-do $$ begin insert into reviews (vendor_id, customer_id, rating) select id, auth.uid(), 1 from vendors where business_name='Studio B'; raise exception 'FAIL double review'; exception when unique_violation then null; end $$;
+do $$ begin insert into reviews (vendor_id, customer_id, rating) select id, auth.uid(), 5 from vendors where business_name='Studio B'; raise exception 'FAIL review without booking'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform accept_bid(id) from bids; raise exception 'FAIL booked without a date'; exception when sqlstate 'P0002' then null; end $$;
 -- request owner can close via the function but not edit fields directly
 update requests set expires_at = now() + interval '1 year';
 select expect('customer cannot edit request fields', count(*), 0) from requests where expires_at > now() + interval '30 days';
@@ -66,6 +65,47 @@ select expect('customer closed request', count(*), 1) from requests where status
 -- vendor still sees the closed request they bid on
 set test.uid='00000000-0000-0000-0000-00000000000b';
 select expect('vendor sees closed request they bid on', count(*), 1) from requests;
+-- direct inquiry to one supplier, quote, revision, booking, review
+set test.uid='00000000-0000-0000-0000-00000000000c';
+insert into requests (customer_id,category_ids,event_type,city,description,event_date,vendor_id)
+  select auth.uid(),'{4}','x','x','catering for 80 guests',current_date,id from vendors where business_name='Cater D';
+set test.uid='00000000-0000-0000-0000-00000000000b';
+select expect('other vendor cannot see a direct inquiry', count(*), 0) from requests where vendor_id is not null;
+set test.uid='00000000-0000-0000-0000-00000000000d';
+select expect('chosen vendor sees the inquiry', count(*), 1) from requests where vendor_id is not null;
+insert into bids (request_id,vendor_id,price,message,includes) select id, public.my_vendor_id(), 5000, 'Buffet for 80', 'Staff and plates' from requests where vendor_id is not null;
+select revise_bid(id, 4500, 'Buffet for 80, revised', 'Staff', current_date + 3) from bids;
+do $$ begin perform accept_bid(id) from bids; raise exception 'FAIL vendor accepted own quote'; exception when insufficient_privilege then null; end $$;
+set test.uid='00000000-0000-0000-0000-00000000000c';
+select expect('revised quote shows as unseen', count(*), 1) from bids where price = 4500 and seen_at is null;
+select accept_bid(b.id) from bids b join requests r on r.id = b.request_id where r.vendor_id is not null;
+do $$ begin perform accept_bid(b.id) from bids b join requests r on r.id = b.request_id where r.vendor_id is not null; raise exception 'FAIL double booking'; exception when unique_violation then null; end $$;
+select expect('booking keeps agreed terms', count(*), 1) from bookings where price = 4500 and terms like 'Buffet for 80, revised%Staff' and status = 'requested';
+do $$ begin perform set_booking_status(id, 'confirmed') from bookings; raise exception 'FAIL customer confirmed'; exception when insufficient_privilege then null; end $$;
+set test.uid='00000000-0000-0000-0000-00000000000b';
+select expect('other vendor cannot see the booking', count(*), 0) from bookings;
+do $$ begin perform set_booking_status('00000000-0000-0000-0000-000000000000', 'confirmed'); raise exception 'FAIL'; exception when insufficient_privilege then null; end $$;
+set test.uid='00000000-0000-0000-0000-00000000000d';
+select set_booking_status(id, 'confirmed') from bookings;
+select expect('confirmed date is blocked', count(*), 1) from busy_vendor_ids(current_date);
+do $$ begin insert into bookings (bid_id,vendor_id,customer_id,price,terms,event_date) select bid_id,vendor_id,customer_id,1,'x',event_date from bookings; raise exception 'FAIL direct booking insert'; exception when insufficient_privilege then null; end $$;
+set test.uid='00000000-0000-0000-0000-00000000000c';
+do $$ begin insert into reviews (vendor_id, customer_id, rating) select vendor_id, auth.uid(), 5 from bookings; raise exception 'FAIL review before completion'; exception when insufficient_privilege then null; end $$;
+select set_booking_status(id, 'completed') from bookings;
+insert into reviews (vendor_id, customer_id, rating) select vendor_id, auth.uid(), 5 from bookings;
+select expect('rating summary', review_count, 1) from vendor_cards where business_name='Cater D';
+do $$ begin insert into reviews (vendor_id, customer_id, rating) select vendor_id, auth.uid(), 1 from bookings; raise exception 'FAIL double review'; exception when unique_violation then null; end $$;
+set test.uid='00000000-0000-0000-0000-00000000000b';
+select reply_review(id, 'not my review') from reviews;
+set test.uid='00000000-0000-0000-0000-00000000000d';
+select reply_review(id, 'Thank you!') from reviews;
+select reply_review(id, 'second reply') from reviews;
+select expect('supplier replies once', count(*), 1) from reviews where vendor_reply = 'Thank you!';
+set test.uid='00000000-0000-0000-0000-00000000000b';
+select report_review(id) from reviews;
+select expect('review reported', count(*), 1) from reviews where reported_at is not null;
+set test.uid='00000000-0000-0000-0000-00000000000c';
+select close_request(id) from requests where vendor_id is not null;
 -- at most 5 open requests per customer
 set test.uid='00000000-0000-0000-0000-00000000000c';
 insert into requests (customer_id,category_ids,event_type,city,description) select auth.uid(),'{7}','x','x','spam spam spam' from generate_series(1,5);
@@ -85,4 +125,10 @@ set role authenticated;
 set test.uid='';
 select expect('anon sees no requests', count(*), 0) from requests;
 select expect('anon sees no bids', count(*), 0) from bids;
+-- signed-out visitors cannot call actions or trigger code
+reset role;
+set role anon;
+do $$ begin perform close_request('00000000-0000-0000-0000-000000000000'); raise exception 'FAIL anon called close_request'; exception when insufficient_privilege then null; end $$;
+do $$ begin perform accept_bid('00000000-0000-0000-0000-000000000000'); raise exception 'FAIL anon called accept_bid'; exception when insufficient_privilege then null; end $$;
+reset role;
 \echo RLS checks passed

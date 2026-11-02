@@ -13,7 +13,10 @@ Stack: Next.js 16 (App Router, server actions), Supabase (Postgres, auth, photo 
 - Vendor listing editor with photo upload; new listings wait for admin approval
 - Requests: customers describe their event (several categories at once) and get bids
 - Bids: approved vendors see open requests in their category, send one bid each, and see when the customer has seen it
-- Reviews: one per customer per vendor
+- Inquiry to one supplier: "اطلب عرض سعر" on a vendor profile sends a request only that vendor sees
+- Quotes: price, message, what's included and a valid-until date; vendors can revise a quote while the request is open
+- Bookings: the customer accepts a quote, the supplier confirms (which hides them from search for that date), either side marks it done after the event date or cancels. Payment happens directly between them; the booking keeps the agreed price, date and terms
+- Reviews: one per customer per vendor, only after a completed booking; the supplier can reply once and anyone signed in can report a review to the admin page
 - Admin page to approve or reject vendors and mark the government freelance certificate as verified
 
 ## Setup
@@ -66,6 +69,10 @@ psql -d glimsey_test -v ON_ERROR_STOP=1 -f supabase/test/supabase_stub.sql -f su
 ```
 
 It prints `RLS checks passed` or stops at the first failing rule.
+
+### Database changes
+
+`supabase/schema.sql` always holds the full schema for a new project. Changes to an existing database are also saved in `supabase/migrations/`, one file per change, to run once in the SQL editor.
 
 ## Not in this version
 

@@ -20,6 +20,20 @@ export async function addReview(form: FormData) {
     rating: Number(form.get("rating")),
     body: String(form.get("body") ?? "").trim() || null,
   });
-  if (error) redirect(`/vendors/${vendorId}?error=${encodeURIComponent("لا يمكنك تقييم هذا المزود (قد تكون قيّمته من قبل)")}`);
+  if (error) redirect(`/vendors/${vendorId}?error=${encodeURIComponent("يمكنك التقييم مرة واحدة بعد حجز مكتمل مع هذا المزود")}`);
   revalidatePath(`/vendors/${vendorId}`);
+}
+
+export async function replyReview(form: FormData) {
+  const { db } = await currentUser();
+  await db.rpc("reply_review", { review: String(form.get("id")), reply: String(form.get("reply")).trim() }); // owner of the listing, once
+  revalidatePath(`/vendors/${form.get("vendor_id")}`);
+}
+
+export async function reportReview(form: FormData) {
+  const { db, user } = await currentUser();
+  if (!user) redirect(`/login?next=/vendors/${form.get("vendor_id")}`);
+  await db.rpc("report_review", { review: String(form.get("id")) });
+  revalidatePath(`/vendors/${form.get("vendor_id")}`);
+  revalidatePath("/admin");
 }

@@ -1,35 +1,25 @@
-import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { CITIES } from "@/lib/constants";
+import { Inter } from "next/font/google";
+import { supabase, currentUser } from "@/lib/supabase";
+import HomeClient from "./HomeClient";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export default async function Home() {
+  const { user, role } = await currentUser();
   const db = await supabase();
-  const { data: categories } = await db.from("categories").select("id, name_ar").order("id");
+  const [{ data: categories }, { data: vendors }] = await Promise.all([
+    db.from("categories").select("id, name_en").order("id"),
+    // shortcut: the homepage filters the top 60 approved vendors in the browser; "See all" goes to /vendors for the full, paged list.
+    db.from("vendor_cards").select("id, business_name, category_id, city, photos, verified, rating, review_count")
+      .eq("status", "approved")
+      .order("verified", { ascending: false })
+      .order("rating", { ascending: false })
+      .order("review_count", { ascending: false })
+      .limit(60),
+  ]);
   return (
-    <div className="grid gap-10">
-      <section className="grid gap-4 text-center">
-        <h1 className="text-3xl font-bold">كل ما تحتاجه لمناسبتك، في مكان واحد</h1>
-        <p className="text-stone-600">ابحث عن مزودي خدمات موثوقين، أو صف مناسبتك ودع المزودين يرسلون لك عروضهم.</p>
-        <form action="/vendors" className="mx-auto flex w-full max-w-xl flex-wrap gap-2">
-          <select name="category" className="input flex-1" aria-label="الفئة">
-            <option value="">كل الفئات</option>
-            {categories?.map((c) => <option key={c.id} value={c.id}>{c.name_ar}</option>)}
-          </select>
-          <select name="city" className="input flex-1" aria-label="المدينة">
-            <option value="">كل المدن</option>
-            {CITIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
-          <button className="btn">بحث</button>
-        </form>
-        <p><Link href="/requests/new" className="font-semibold text-rose-700 underline">أو اطلب عروض أسعار من عدة مزودين</Link></p>
-      </section>
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {categories?.map((c) => (
-          <Link key={c.id} href={`/vendors?category=${c.id}`} className="card text-center font-semibold hover:border-rose-300">
-            {c.name_ar}
-          </Link>
-        ))}
-      </section>
+    <div lang="en" dir="ltr" className={inter.variable}>
+      <HomeClient categories={categories ?? []} vendors={vendors ?? []} signedIn={!!user} role={role} />
     </div>
   );
 }
